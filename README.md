@@ -20,7 +20,7 @@ An end-to-end fraud detection pipeline built in Databricks using PySpark and Del
 
 **03_fraud_model** — Assembles features with `VectorAssembler`, splits into an 80/20 train/test set (225,414 / 56,504 rows), and trains a **Logistic Regression** baseline.
 
-**04_fraud_model_comparison** — Trains a **Random Forest** classifier (100 trees) on the same split and compares performance against the baseline.
+**04_fraud_model_comparison** — Trains a **Random Forest** classifier (100 trees) on the same split, compares it against the baseline, and applies threshold tuning to optimize fraud detection.
 
 A **Delta Live Tables pipeline** (`fraud_pipeline`) also orchestrates the ingestion and cleaning stages as materialized views (`raw_transactions_dlt` → `clean_transactions_dlt`), following the Medallion Architecture.
 
@@ -33,18 +33,21 @@ With only 0.17% of transactions being fraudulent, a model that predicts "not fra
 | Model | Accuracy | Fraud Precision | Fraud Recall |
 |---|---|---|---|
 | Logistic Regression | 99.93% | 90.9% | 60.2% |
-| **Random Forest** | **99.94%** | 88.1% | **71.1%** |
-
-**Selected model: Random Forest.** While Logistic Regression edges out slightly on precision, Random Forest catches significantly more fraud cases (71.1% vs 60.2% recall) with only a small drop in precision — a stronger tradeoff for a fraud detection use case, where missing fraud is typically costlier than an occasional false alarm.
+| Random Forest | 99.94% | 88.1% | 71.1% |
+| **Random Forest (threshold=0.3)** | **99.95%** | 85.3% | **77.1%** |
 
 ![Confusion Matrix](outputs/confusion_matrix.png)
 
-Out of 56,504 test transactions, Random Forest correctly identified 59 of 83 actual fraud cases, with only 8 false positives out of over 56,000 legitimate transactions.
+## Threshold Tuning
+
+By default, classifiers use a 0.5 probability threshold to decide fraud vs. legitimate. Lowering Random Forest's threshold to 0.3 improved fraud recall from 71.1% to 77.1% — meaning the model now catches over 3 in 4 fraud cases, up from roughly 7 in 10. The tradeoff is a modest drop in precision (88.1% → 85.3%), which is an acceptable cost in a fraud detection context, where missing a fraudulent transaction is typically far more expensive than an occasional false alarm requiring manual review.
+
+**Selected model: Random Forest with threshold 0.3.**
 
 ## Tech stack
-`python` `pyspark` `databricks` `delta-live-tables` `machine-learning` `medallion-architecture` `logistic-regression` `random-forest`
+`python` `pyspark` `databricks` `delta-live-tables` `machine-learning` `medallion-architecture` `logistic-regression` `random-forest` `threshold-tuning`
 
 ## Next steps
-- Experiment with class balancing techniques (SMOTE, class weighting) to further improve fraud detection coverage
+- Experiment with class balancing techniques (SMOTE, class weighting) to push recall further
 - Try XGBoost for comparison
-- Add ROC curve and precision-recall curve visualization for threshold tuning
+- Add ROC curve and precision-recall curve visualization across thresholds
